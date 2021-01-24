@@ -10,13 +10,14 @@
 #include <HTTPClient.h>
 #include <HTTPUpdate.h>
 #include "app_debug.h"
-
+#include "pin_map.h"
+#include <EEPROM.h>
 
 
 #define HTTP_PORT 80
 
 
-void StartWebServer();
+
 void handleRoot();
 void handleWifi();
 void handleMQTT();
@@ -26,5 +27,6 @@ void handleUpdate();
 void handleUpdateUrl();
 void handleUpdateFile();
 void handleInfo();
+
 
 #endif /* Esp32WebServer_h */

@@ -1,7 +1,7 @@
 #include "rostek_iot.h"
 
-
-
+extern WebServer server;
+//extern struct config_network;
 
 void SetupConfigMode(){
 	ECHOLN("Open AP....");
@@ -9,14 +9,15 @@ void SetupConfigMode(){
 	WiFi.disconnect();
 	server.close();
 	delay(500);
-	WiFi.mode(WIFI_AP_STA);
+	WiFi.mode(WIFI_AP);
 
-
+	ECHOLN("Open AP....");
 	uint8_t mac[WL_MAC_ADDR_LENGTH];
-	WiFi.softAPmacAddress(mac);
-	String macID = String(mac[WL_MAC_ADDR_LENGTH - 2], HEX) + String(mac[WL_MAC_ADDR_LENGTH - 1], HEX);
-	macID.toUpperCase();
-	String SSID_AP_MODE = SSID_PRE_AP_MODE + macID;
+	// WiFi.softAPmacAddress(mac);
+	// String macID = String(mac[WL_MAC_ADDR_LENGTH - 2], HEX) + String(mac[WL_MAC_ADDR_LENGTH - 1], HEX);
+	// macID.toUpperCase();
+	// String SSID_AP_MODE = SSID_PRE_AP_MODE + macID;
+	String SSID_AP_MODE = SSID_PRE_AP_MODE;
 	WiFi.softAP(SSID_AP_MODE.c_str());
 	IPAddress APIP(192, 168, 4, 1);
 	IPAddress gateway(192, 168, 4, 1);
@@ -64,9 +65,13 @@ void ReadEeprom(){
 	ECHO("MQTT SERVER: ");
 	ECHOLN(mqtt.server);
 
-	mqtt.port = char(EEPROM.read(EEPROM_MQTT_PORT));
+	String port_mqtt = "";
+	for (int i = EEPROM_MQTT_PORT_START; i < EEPROM_MQTT_PORT_END; ++i){
+		port_mqtt += char(EEPROM.read(i));
+	}
+	mqtt.port = port_mqtt.toInt();
 	ECHO("MQTT PORT: ");
-	ECHOLN(mqtt.server);
+	ECHOLN(mqtt.port);
 
 	if(char(EEPROM.read(EEPROM_IS_REGISTER_MQTT_USER) == 1)){
 		mqtt.is_register_user = true;
@@ -90,7 +95,7 @@ void ReadEeprom(){
 	}
 }
 
-void ConnectToWifi(){
+bool ConnectToWifi(){
 	WiFi.softAPdisconnect();
     WiFi.disconnect();
     server.close();
@@ -105,14 +110,14 @@ void ConnectToWifi(){
     
     int c = 0;
     ECHOLN("Waiting for Wifi to connect");
-    while (c < 40) {
+    while (c < 20) {
         if (WiFi.status() == WL_CONNECTED) {
             ECHOLN("\rWifi connected!");
             ECHO("Local IP: ");
             ECHOLN(WiFi.localIP());
             // digitalWrite(ledTestWifi, HIGH);
             // ConnecttoMqttServer();
-            // return true;
+            return true;
         }
         if(!digitalRead(PIN_CONFIG)){
             break;
@@ -123,7 +128,7 @@ void ConnectToWifi(){
     }
     ECHOLN("");
     ECHOLN("Connect timed out");
-    // return false;
+    return false;
 }
 
 bool ScanNetworks(String ssid) {
@@ -155,7 +160,67 @@ bool ScanNetworks(String ssid) {
 	return false;
 }
 
+void StartWebServer(){
+	server.on ("/", HTTP_GET, handleRoot);
+	server.on ("/main", HTTP_GET, handleRoot);
+	server.on ("/wifi", HTTP_GET, handleWifi);
+	server.on ("/mqtt", HTTP_GET, handleMQTT);
+	server.on ("/update", HTTP_GET, handleUpdate);
+	server.on ("/updateurl", HTTP_GET, handleUpdateUrl);
+	server.on ("/updatefile", HTTP_GET,[]() {
+		server.sendHeader("Connection", "close");
+		server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+		ESP.restart();
+	}, handleUpdateFile);
+	server.on ("/savewifi", HTTP_GET, handleSaveWifi);
+	server.on ("/savemqtt",HTTP_GET, handleSaveMqtt);
+	server.on ("/info", HTTP_GET, handleInfo);
 
+	server.begin();
+	Serial.println ( "HTTP server started" );
+}
+
+
+void ConnectToMqttServer(){
+	// client.setServer(mqtt_server, MQTT_PORT);
+	client.setServer(mqtt.server.c_str(), mqtt.port);
+    client.setCallback(callbackMqttBroker);
+    ReconnectToMqttServer();
+}
+
+void callbackMqttBroker(char* topic, byte* payload, unsigned int length){
+	//data receive from Mqtt server
+}
+
+void ReconnectToMqttServer(){
+	String clientId = String(random(0xffffff), HEX);
+	const char* willTopic = "ROSTEK/LWT";
+    uint8_t willQos = 0;
+    boolean willRetain = false;
+	String willMessage = "{\"data\" : \"disconnect\"}";
+
+	if(EEPROM.read(EEPROM_IS_REGISTER_MQTT_USER) == 1){
+		if (client.connect(clientId.c_str(), mqtt.user.c_str(), mqtt.pass.c_str(), willTopic, willQos, willRetain, willMessage.c_str())) {
+			ECHO("connected have user with id: ");
+        	ECHOLN(clientId);
+			// client.subscribe(topicControlhand.c_str());
+        	// ECHO("Done Subscribe Channel: ");
+		}
+	}
+	else{
+		if (client.connect(clientId.c_str(), willTopic, willQos, willRetain, willMessage.c_str())) {
+			ECHO("connected no user with id: ");
+        	ECHOLN(clientId);
+			// client.subscribe(topicControlhand.c_str());
+        	// ECHO("Done Subscribe Channel: ");
+		}
+	}
+	if(!client.connected()){
+        ECHO("failed, rc=");
+        ECHO(client.state());
+        ECHOLN(" try again in 2 seconds");
+    }
+}
 
 
 
@@ -164,7 +229,7 @@ void setup() {
 	WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
 	Serial.begin(BAUDRATE_DEFAULT);
 	EEPROM.begin(EEPROM_MEMORY);
-
+	delay(10);
 	pinMode(PIN_CONFIG, INPUT);
 	
 	if(EEPROM.read(EEPROM_IS_REGISTER_WIFI) != 1){
@@ -175,13 +240,35 @@ void setup() {
 	else{
 		wifi.normal_mode = true;
 		ReadEeprom();
-		ConnectToWifi();
-		StartWebServer();
+		if(ConnectToWifi()){
+			StartWebServer();
+			ConnectToMqttServer();
+		}
+		
 	}
 
 }
 
 void loop() {
 	// put your main code here, to run repeatedly:
+	if(wifi.normal_mode && WiFi.status() == WL_CONNECTED){
+		if (!client.connected()) {
+			unsigned long nowReconnectAttempt = millis();
+			if (abs(nowReconnectAttempt - mqtt.lastReconnectAttempt) > MQTT_RECONNECT_TIME_WAIT) {
+                mqtt.lastReconnectAttempt = nowReconnectAttempt;
+                ReconnectToMqttServer();
+            }
+		}else{
+			client.loop();
+		}
+	}
 
+	if(wifi.normal_mode && WiFi.status() != WL_CONNECTED){
+		if(ConnectToWifi()){
+			StartWebServer();
+			ConnectToMqttServer();
+		}
+	}
+
+	server.handleClient();
 }

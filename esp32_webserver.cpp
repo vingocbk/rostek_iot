@@ -3,6 +3,13 @@
 WebServer server(HTTP_PORT);
 char htmlResponse[3000];
 
+struct config
+{
+	/* data */
+	bool setup_wifi = false;
+	bool setup_mqtt = false;
+
+}config_network;
 
 void handleRoot(){
 	snprintf ( htmlResponse, 3000,
@@ -114,31 +121,114 @@ void handleMQTT() {
 void handleSaveWifi() {
 	server.send(200, "application/json; charset=utf-8", "{\"status\":\"success\"}");
 	if (server.arg("wifi_ssid")!= ""){
+		EEPROM.write(EEPROM_IS_REGISTER_WIFI, 1);
+
+		// String ssid_1 = server.arg("wifi_ssid");
 		ECHOLN("wifi_ssid: " + server.arg("wifi_ssid"));
+		ECHOLN("clearing eeprom");
+        for (int i = EEPROM_WIFI_SSID_1_START; i <= EEPROM_WIFI_SSID_1_END; i++){ 
+            EEPROM.write(i, 0); 
+        }
+		ECHOLN("writing eeprom ssid:");
+        ECHO("Wrote: ");
+        for (int i = 0; i < server.arg("wifi_ssid").length(); ++i){
+            EEPROM.write(i+EEPROM_WIFI_SSID_1_START, server.arg("wifi_ssid")[i]);             
+            ECHO(server.arg("wifi_ssid")[i]);
+        }
+		ECHOLN("");
 	}
 
 	if (server.arg("wifi_pass")!= ""){
+		// String pass_1 = server.arg("wifi_pass");
 		ECHOLN("wifi_pass: " + server.arg("wifi_pass"));
+		ECHOLN("clearing eeprom");
+        for (int i = EEPROM_WIFI_PASS_1_START; i <= EEPROM_WIFI_PASS_1_END; i++){ 
+            EEPROM.write(i, 0); 
+        }
+		ECHOLN("writing eeprom pass:");
+        ECHO("Wrote: ");
+        for (int i = 0; i < server.arg("wifi_pass").length(); ++i){
+            EEPROM.write(i+EEPROM_WIFI_PASS_1_START, server.arg("wifi_pass")[i]);             
+            ECHO(server.arg("wifi_pass")[i]);
+        }
+		ECHOLN("");
 	}
+
+	EEPROM.commit();
+	ECHOLN("Done writing!");
 }
 
 void handleSaveMqtt() {
 	server.send(200, "application/json; charset=utf-8", "{\"status\":\"success\"}");
 	if (server.arg("server")!= ""){
-		ECHOLN("mqtt_server: " + server.arg("server"));
+		// String server = server.arg("server");
+		ECHOLN("server: " + server.arg("server"));
+		ECHOLN("clearing eeprom");
+        for (int i = EEPROM_MQTT_SERVER_START; i <= EEPROM_MQTT_SERVER_END; i++){ 
+            EEPROM.write(i, 0); 
+        }
+		ECHOLN("writing eeprom server:");
+        ECHO("Wrote: ");
+        for (int i = 0; i < server.arg("server").length(); ++i){
+            EEPROM.write(i+EEPROM_MQTT_SERVER_START, server.arg("server")[i]);             
+            ECHO(server.arg("server")[i]);
+        }
+		ECHOLN("");
 	}
 
 	if (server.arg("port")!= ""){
-		ECHOLN("mqtt_port: " + server.arg("port"));
+		// String port = server.arg("port");
+		ECHOLN("port: " + server.arg("port"));
+		ECHOLN("clearing eeprom");
+        for (int i = EEPROM_MQTT_PORT_START; i <= EEPROM_MQTT_PORT_END; i++){ 
+            EEPROM.write(i, 0); 
+        }
+		ECHOLN("writing eeprom port:");
+        ECHO("Wrote: ");
+        for (int i = 0; i < server.arg("port").length(); ++i){
+            EEPROM.write(i+EEPROM_MQTT_PORT_START, server.arg("port")[i]);             
+            ECHO(server.arg("port")[i]);
+        }
+		ECHOLN("");
 	}
 
 	if (server.arg("user")!= ""){
-		ECHOLN("mqtt_user: " + server.arg("user"));
+		EEPROM.write(EEPROM_IS_REGISTER_MQTT_USER, 1);
+		// String user = server.arg("user");
+		ECHOLN("user: " + server.arg("user"));
+		ECHOLN("clearing eeprom");
+        for (int i = EEPROM_MQTT_USER_START; i <= EEPROM_MQTT_USER_END; i++){ 
+            EEPROM.write(i, 0); 
+        }
+		ECHOLN("writing eeprom user:");
+        ECHO("Wrote: ");
+        for (int i = 0; i < server.arg("user").length(); ++i){
+            EEPROM.write(i+EEPROM_MQTT_USER_START, server.arg("user")[i]);             
+            ECHO(server.arg("user")[i]);
+        }
+		ECHOLN("");
+	}else{
+		EEPROM.write(EEPROM_IS_REGISTER_MQTT_USER, 0);
 	}
 
 	if (server.arg("pass")!= ""){
-		ECHOLN("mqtt_pass: " + server.arg("pass"));
+		// String pass = server.arg("pass");
+		ECHOLN("pass: " + server.arg("pass"));
+		ECHOLN("clearing eeprom");
+        for (int i = EEPROM_MQTT_PASS_START; i <= EEPROM_MQTT_PASS_END; i++){ 
+            EEPROM.write(i, 0); 
+        }
+		ECHOLN("writing eeprom pass:");
+        ECHO("Wrote: ");
+        for (int i = 0; i < server.arg("pass").length(); ++i){
+            EEPROM.write(i+EEPROM_MQTT_PASS_START, server.arg("pass")[i]);             
+            ECHO(server.arg("pass")[i]);
+        }
+		ECHOLN("");
 	}
+
+	EEPROM.commit();
+	ECHOLN("Done writing!");
 }
 
 void handleUpdate(){
@@ -245,8 +335,4 @@ void handleInfo(){
 	</html>"); 
 
 	server.send ( 200, "text/html", htmlResponse );
-}
-
-void StartWebServer(){
-	
 }
