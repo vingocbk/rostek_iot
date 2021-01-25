@@ -11,6 +11,30 @@ struct config
 
 }config_network;
 
+//-----------------------------STATION-----------------------//
+// HTML web page to handle 3 input fields (input1, input2, input3)
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE HTML><html><head>
+  <title>ESP Input Form</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head><body>
+  <form action="/get">
+    input1: <input type="text" name="input1">
+    <input type="submit" value="Submit">
+  </form><br>
+  <form action="/get">
+    input2: <input type="text" name="input2">
+    <input type="submit" value="Submit">
+  </form><br>
+  <form action="/get">
+    input3: <input type="text" name="input3">
+    <input type="submit" value="Submit">
+  </form>
+</body></html>)rawliteral";
+
+
+
+//-----------------------------AP MODE-----------------------//
 void handleRoot(){
 	snprintf ( htmlResponse, 3000,
 		"<!DOCTYPE html>\
@@ -44,21 +68,29 @@ void handleWifi() {
 		<body>\
 			<center>\
 				<h1>CONFIG WIFI</h1>\
-				<br><h3>Wifi SSID</h3>\
-				<br><input type='text' name='wifi_ssid' id='wifi_ssid' size=15 autofocus>\
-				<br><h3>Wifi PASSWORD</h3>\
-				<br><input type='text' name='wifi_pass' id='wifi_pass' size=15 autofocus>\
+				<br><h3>Wifi SSID 1</h3>\
+				<br><input type='text' name='wifi_ssid_1' id='wifi_ssid_1' size=15 autofocus>\
+				<br><h3>Wifi PASSWORD 1</h3>\
+				<br><input type='text' name='wifi_pass_1' id='wifi_pass_1' size=15 autofocus>\
+				<br><h3>Wifi SSID 2</h3>\
+				<br><input type='text' name='wifi_ssid_2' id='wifi_ssid_2' size=15 autofocus>\
+				<br><h3>Wifi PASSWORD 2</h3>\
+				<br><input type='text' name='wifi_pass_2' id='wifi_pass_2' size=15 autofocus>\
 				<br><button id=\"save_button\">Save</button>\
 				<br><a href=\"main\"><button>Back to Main</button></a><br>\
 				<script src=\"https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js\"></script>\    
 				<script>\
-					var ssid;\
-					var password;\
+					var ssid_1;\
+					var password_1;\
+					var ssid_2;\
+					var password_2;\
 					$('#save_button').click(function(e){\
 					e.preventDefault();\
-					ssid = $('#wifi_ssid').val();\
-					password = $('#wifi_pass').val();\
-					$.get('/savewifi?wifi_ssid=' + ssid + '&wifi_pass=' + password, function(data){\
+					ssid_1 = $('#wifi_ssid_1').val();\
+					password_1 = $('#wifi_pass_1').val();\
+					ssid_2 = $('#wifi_ssid_2').val();\
+					password_2 = $('#wifi_pass_2').val();\
+					$.get('/savewifi?wifi_ssid_1=' + ssid_1 + '&wifi_pass_1=' + password_1 + '&wifi_ssid_2=' + ssid_2 + '&wifi_pass_2=' + password_2, function(data){\
 						console.log(data);\
 					});\
 					});\      
@@ -119,43 +151,76 @@ void handleMQTT() {
 
 
 void handleSaveWifi() {
+	ECHOLN("----");
 	server.send(200, "application/json; charset=utf-8", "{\"status\":\"success\"}");
-	if (server.arg("wifi_ssid")!= ""){
-		EEPROM.write(EEPROM_IS_REGISTER_WIFI, 1);
+	if (server.arg("wifi_ssid_1")!= ""){
+		// EEPROM.write(EEPROM_IS_REGISTER_WIFI, 1);
 
-		// String ssid_1 = server.arg("wifi_ssid");
-		ECHOLN("wifi_ssid: " + server.arg("wifi_ssid"));
+		// String ssid_1 = server.arg("wifi_ssid_1");
+		ECHOLN("wifi_ssid_1: " + server.arg("wifi_ssid_1"));
 		ECHOLN("clearing eeprom");
         for (int i = EEPROM_WIFI_SSID_1_START; i <= EEPROM_WIFI_SSID_1_END; i++){ 
             EEPROM.write(i, 0); 
         }
-		ECHOLN("writing eeprom ssid:");
+		ECHOLN("writing eeprom ssid_1:");
         ECHO("Wrote: ");
-        for (int i = 0; i < server.arg("wifi_ssid").length(); ++i){
-            EEPROM.write(i+EEPROM_WIFI_SSID_1_START, server.arg("wifi_ssid")[i]);             
-            ECHO(server.arg("wifi_ssid")[i]);
+        for (int i = 0; i < server.arg("wifi_ssid_1").length(); ++i){
+            EEPROM.write(i+EEPROM_WIFI_SSID_1_START, server.arg("wifi_ssid_1")[i]);             
+            ECHO(server.arg("wifi_ssid_1")[i]);
         }
 		ECHOLN("");
 	}
 
-	if (server.arg("wifi_pass")!= ""){
-		// String pass_1 = server.arg("wifi_pass");
-		ECHOLN("wifi_pass: " + server.arg("wifi_pass"));
+	if (server.arg("wifi_pass_1")!= ""){
+		// String pass_1 = server.arg("wifi_pass_1");
+		ECHOLN("wifi_pass_1: " + server.arg("wifi_pass_1"));
 		ECHOLN("clearing eeprom");
         for (int i = EEPROM_WIFI_PASS_1_START; i <= EEPROM_WIFI_PASS_1_END; i++){ 
             EEPROM.write(i, 0); 
         }
-		ECHOLN("writing eeprom pass:");
+		ECHOLN("writing eeprom pass_1:");
         ECHO("Wrote: ");
-        for (int i = 0; i < server.arg("wifi_pass").length(); ++i){
-            EEPROM.write(i+EEPROM_WIFI_PASS_1_START, server.arg("wifi_pass")[i]);             
-            ECHO(server.arg("wifi_pass")[i]);
+        for (int i = 0; i < server.arg("wifi_pass_1").length(); ++i){
+            EEPROM.write(i+EEPROM_WIFI_PASS_1_START, server.arg("wifi_pass_1")[i]);             
+            ECHO(server.arg("wifi_pass_1")[i]);
         }
 		ECHOLN("");
 	}
 
-	EEPROM.commit();
-	ECHOLN("Done writing!");
+	if (server.arg("wifi_ssid_2")!= ""){
+		// String pass_1 = server.arg("wifi_ssid_2");
+		ECHOLN("wifi_ssid_2: " + server.arg("wifi_ssid_2"));
+		ECHOLN("clearing eeprom");
+        for (int i = EEPROM_WIFI_SSID_2_START; i <= EEPROM_WIFI_SSID_2_END; i++){ 
+            EEPROM.write(i, 0); 
+        }
+		ECHOLN("writing eeprom ssid_2:");
+        ECHO("Wrote: ");
+        for (int i = 0; i < server.arg("wifi_ssid_2").length(); ++i){
+            EEPROM.write(i+EEPROM_WIFI_SSID_2_START, server.arg("wifi_ssid_2")[i]);             
+            ECHO(server.arg("wifi_ssid_2")[i]);
+        }
+		ECHOLN("");
+	}
+
+	if (server.arg("wifi_pass_2")!= ""){
+		// String pass_1 = server.arg("wifi_pass_2");
+		ECHOLN("wifi_pass_2: " + server.arg("wifi_pass_2"));
+		ECHOLN("clearing eeprom");
+        for (int i = EEPROM_WIFI_PASS_2_START; i <= EEPROM_WIFI_PASS_2_END; i++){ 
+            EEPROM.write(i, 0); 
+        }
+		ECHOLN("writing eeprom pass_2:");
+        ECHO("Wrote: ");
+        for (int i = 0; i < server.arg("wifi_pass_2").length(); ++i){
+            EEPROM.write(i+EEPROM_WIFI_PASS_2_START, server.arg("wifi_pass_2")[i]);             
+            ECHO(server.arg("wifi_pass_2")[i]);
+        }
+		ECHOLN("");
+	}
+
+	// EEPROM.commit();
+	// ECHOLN("Done writing!");
 }
 
 void handleSaveMqtt() {

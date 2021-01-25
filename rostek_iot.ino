@@ -11,13 +11,13 @@ void SetupConfigMode(){
 	delay(500);
 	WiFi.mode(WIFI_AP);
 
-	ECHOLN("Open AP....");
+	// ECHOLN("Open AP....");
 	uint8_t mac[WL_MAC_ADDR_LENGTH];
-	// WiFi.softAPmacAddress(mac);
-	// String macID = String(mac[WL_MAC_ADDR_LENGTH - 2], HEX) + String(mac[WL_MAC_ADDR_LENGTH - 1], HEX);
-	// macID.toUpperCase();
-	// String SSID_AP_MODE = SSID_PRE_AP_MODE + macID;
-	String SSID_AP_MODE = SSID_PRE_AP_MODE;
+	WiFi.softAPmacAddress(mac);
+	String macID = String(mac[WL_MAC_ADDR_LENGTH - 2], HEX) + String(mac[WL_MAC_ADDR_LENGTH - 1], HEX);
+	macID.toUpperCase();
+	String SSID_AP_MODE = SSID_PRE_AP_MODE + macID;
+	// String SSID_AP_MODE = SSID_PRE_AP_MODE;
 	WiFi.softAP(SSID_AP_MODE.c_str());
 	IPAddress APIP(192, 168, 4, 1);
 	IPAddress gateway(192, 168, 4, 1);
@@ -173,7 +173,7 @@ void StartWebServer(){
 		ESP.restart();
 	}, handleUpdateFile);
 	server.on ("/savewifi", HTTP_GET, handleSaveWifi);
-	server.on ("/savemqtt",HTTP_GET, handleSaveMqtt);
+	server.on ("/savemqtt", HTTP_GET, handleSaveMqtt);
 	server.on ("/info", HTTP_GET, handleInfo);
 
 	server.begin();

@@ -13,6 +13,8 @@
 #include "pin_map.h"
 #include <EEPROM.h>
 
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
 
 #define HTTP_PORT 80
 
