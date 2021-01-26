@@ -4,7 +4,7 @@
 #define BAUDRATE_DEFAULT 115200
 #define EEPROM_MEMORY  512
 
-#define PIN_CONFIG	5
+#define PIN_CONFIG	0
 
 #define EEPROM_IS_REGISTER_WIFI         1
 #define EEPROM_WIFI_SSID_1_START        2
@@ -27,7 +27,7 @@
 
 #define WL_MAC_ADDR_LENGTH              6
 #define SSID_PRE_AP_MODE    "ROSTEK-"
-#define MQTT_RECONNECT_TIME_WAIT		2000
-
+#define MQTT_RECONNECT_TIME_WAIT		5000        //wait 5s to reconnect to mqtt server
+#define TIME_OUT_TO_CONFIG_MODE         5000
 
 #endif /* PINMAP_h */

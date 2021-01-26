@@ -1,18 +1,21 @@
+/*
+Design by Ngoc Vi
+Ha Noi 01/2021
+
+Code use for both esp32 and esp8266
+*/
+
+
 #ifndef RostekIot_h
 #define RostekIot_h
-
+#include <Arduino.h>
 #include "app_debug.h"
 #include <EEPROM.h>
 #include <PubSubClient.h>
-#include <Arduino.h>
-#include <WiFi.h>
-#include <WiFiClient.h>
-#include <WebServer.h>
 #include "esp32_webserver.h"
 #include "pin_map.h"
 
-#include "soc/soc.h"  //Brownout detector was triggered
-#include "soc/rtc_cntl_reg.h"
+
 
 
 
@@ -27,6 +30,7 @@ struct wifi {
   	String pass_1;
   	String ssid_2;
   	String pass_2;
+	uint32_t time_click_button;
 }wifi;
 
 struct mqtt {
@@ -45,10 +49,11 @@ struct mqtt {
 void SetupConfigMode();       //mode AP
 bool ConnectToWifi();         //mode Station
 void ReadEeprom();
-bool ScanNetworks();
+bool ScanNetworks(String ssid, bool debug);
 void StartWebServer();
 void ConnectToMqttServer();
 void callbackMqttBroker(char* topic, byte* payload, unsigned int length);
 void ReconnectToMqttServer();
+void ButtonConfigClick();
 
 #endif /* RostekIot_h */

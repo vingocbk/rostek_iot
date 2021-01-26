@@ -1,13 +1,14 @@
 #include "rostek_iot.h"
 
-extern WebServer server;
-//extern struct config_network;
+extern AsyncWebServer server;
+extern struct config config_network;
+// extern web_setup_wifi;
+// extern web_setup_mqtt;
 
 void SetupConfigMode(){
 	ECHOLN("Open AP....");
 	WiFi.softAPdisconnect();
 	WiFi.disconnect();
-	server.close();
 	delay(500);
 	WiFi.mode(WIFI_AP);
 
@@ -98,21 +99,47 @@ void ReadEeprom(){
 bool ConnectToWifi(){
 	WiFi.softAPdisconnect();
     WiFi.disconnect();
-    server.close();
+//    server.close();
     WiFi.mode(WIFI_STA);        //bat che do station
-	if(ScanNetworks(wifi.ssid_1)){
-		WiFi.begin(wifi.ssid_1.c_str(), wifi.pass_1.c_str());
-	}
-	else if(ScanNetworks(wifi.ssid_2)){
-		WiFi.begin(wifi.ssid_2.c_str(), wifi.pass_2.c_str());
-	}
+	// if(ScanNetworks(wifi.ssid_1, true)){
+	// 	WiFi.begin(wifi.ssid_1.c_str(), wifi.pass_1.c_str());
+	// }
+	// else if(ScanNetworks(wifi.ssid_2, false)){
+	// 	WiFi.begin(wifi.ssid_2.c_str(), wifi.pass_2.c_str());
+	// }
+    // else{
+	// 	ECHOLN("NO WIFI CAN CONNECT!");
+	// 	delay(5000);
+	// 	return false;
+	// }
     
-    
+	WiFi.begin(wifi.ssid_1.c_str(), wifi.pass_1.c_str());
     int c = 0;
-    ECHOLN("Waiting for Wifi to connect");
+    ECHOLN("Waiting for Wifi to connect: " + wifi.ssid_1);
     while (c < 20) {
         if (WiFi.status() == WL_CONNECTED) {
-            ECHOLN("\rWifi connected!");
+            ECHOLN("Wifi connected!");
+            ECHO("Local IP: ");
+            ECHOLN(WiFi.localIP());
+            // digitalWrite(ledTestWifi, HIGH);
+            // ConnecttoMqttServer();
+            return true;
+        }
+        if(!digitalRead(PIN_CONFIG)){
+            break;
+        }
+        delay(500);
+        ECHO(".");
+        c++;
+    }
+    ECHOLN("");
+
+	WiFi.begin(wifi.ssid_2.c_str(), wifi.pass_2.c_str());
+    c = 0;
+    ECHOLN("Waiting for Wifi to connect: " + wifi.ssid_2);
+    while (c < 20) {
+        if (WiFi.status() == WL_CONNECTED) {
+            ECHOLN("Wifi connected!");
             ECHO("Local IP: ");
             ECHOLN(WiFi.localIP());
             // digitalWrite(ledTestWifi, HIGH);
@@ -131,53 +158,61 @@ bool ConnectToWifi(){
     return false;
 }
 
-bool ScanNetworks(String ssid) {
+bool ScanNetworks(String ssid, bool debug){
 	int numberOfNetworks = WiFi.scanNetworks();
-
-	ECHO("Number of networks found: ");
-	ECHOLN(numberOfNetworks);
+	if(debug){
+		ECHO("Number of networks found: ");
+		ECHOLN(numberOfNetworks);
+	}
+	
 
 	for (int i = 0; i < numberOfNetworks; i++) {
 
-		ECHO("Network name: ");
-		ECHOLN(WiFi.SSID(i));
+	if(debug){
+			ECHO("Network name: ");
+			ECHOLN(WiFi.SSID(i));
 
-		ECHO("Signal strength: ");
-		ECHOLN(WiFi.RSSI(i));
+			ECHO("Signal strength: ");
+			ECHOLN(WiFi.RSSI(i));
 
-		// ECHO("MAC address: ");
-		// ECHOLN(WiFi.BSSIDstr(i));
+			// ECHO("MAC address: ");
+			// ECHOLN(WiFi.BSSIDstr(i));
 
-		// ECHO("Encryption type: ");
-		// String encryptionTypeDescription = translateEncryptionType(WiFi.encryptionType(i));
-		// ECHOLN(encryptionTypeDescription);
-		// ECHOLN("-----------------------");
-
-		if(WiFi.SSID(i) == ssid){
+			// ECHO("Encryption type: ");
+			// String encryptionTypeDescription = translateEncryptionType(WiFi.encryptionType(i));
+			// ECHOLN(encryptionTypeDescription);
+			// ECHOLN("-----------------------");
+		}
+		String c = WiFi.SSID(i);
+		ssid.trim();
+		c.trim();
+		if(ssid == c){
 			return true;
 		}
+
+		// ECHO(ssid+c+ssid+c);
 	}
 	return false;
 }
 
 void StartWebServer(){
-	server.on ("/", HTTP_GET, handleRoot);
-	server.on ("/main", HTTP_GET, handleRoot);
-	server.on ("/wifi", HTTP_GET, handleWifi);
-	server.on ("/mqtt", HTTP_GET, handleMQTT);
-	server.on ("/update", HTTP_GET, handleUpdate);
-	server.on ("/updateurl", HTTP_GET, handleUpdateUrl);
-	server.on ("/updatefile", HTTP_GET,[]() {
-		server.sendHeader("Connection", "close");
-		server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-		ESP.restart();
-	}, handleUpdateFile);
-	server.on ("/savewifi", HTTP_GET, handleSaveWifi);
-	server.on ("/savemqtt", HTTP_GET, handleSaveMqtt);
-	server.on ("/info", HTTP_GET, handleInfo);
-
+	server.on("/", HTTP_GET, handleRoot);
+	server.on("/main", HTTP_GET, handleRoot);
+	server.on("/wifi", HTTP_GET, handleWifi);
+	server.on("/mqtt", HTTP_GET, handleMQTT);
+	server.on("/update", HTTP_GET, handleUpdate);
+	// server.on("/updateurl", HTTP_GET, handleUpdateUrl);
+	// server.on("/updatefile", HTTP_POST,[]() {
+	// 	server.sendHeader("Connection", "close");
+	// 	server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+	// 	ESP.restart();
+	// }, handleUpdateFile);
+	server.on("/savewifi", HTTP_GET, handleSaveWifi);
+	server.on("/savemqtt", HTTP_GET, handleSaveMqtt);
+	server.on("/info", HTTP_GET, handleInfo);
+	server.onNotFound(notFound);
 	server.begin();
-	Serial.println ( "HTTP server started" );
+	Serial.println( "HTTP server started" );
 }
 
 
@@ -190,6 +225,16 @@ void ConnectToMqttServer(){
 
 void callbackMqttBroker(char* topic, byte* payload, unsigned int length){
 	//data receive from Mqtt server
+	String Topic = String(topic);
+    ECHO("TOPIC: ");
+    ECHOLN(Topic);
+
+    String data;
+    for (int i = 0; i < length; i++) {
+        data += char(payload[i]);
+    }
+    ECHO("DATA: ");
+    ECHOLN(data);
 }
 
 void ReconnectToMqttServer(){
@@ -198,42 +243,64 @@ void ReconnectToMqttServer(){
     uint8_t willQos = 0;
     boolean willRetain = false;
 	String willMessage = "{\"data\" : \"disconnect\"}";
-
 	if(EEPROM.read(EEPROM_IS_REGISTER_MQTT_USER) == 1){
 		if (client.connect(clientId.c_str(), mqtt.user.c_str(), mqtt.pass.c_str(), willTopic, willQos, willRetain, willMessage.c_str())) {
 			ECHO("connected have user with id: ");
         	ECHOLN(clientId);
-			// client.subscribe(topicControlhand.c_str());
-        	// ECHO("Done Subscribe Channel: ");
+			client.subscribe("Rostek/iot");
+        	ECHOLN("Done Subscribe Channel: Rostek/iot");
 		}
 	}
 	else{
 		if (client.connect(clientId.c_str(), willTopic, willQos, willRetain, willMessage.c_str())) {
 			ECHO("connected no user with id: ");
         	ECHOLN(clientId);
-			// client.subscribe(topicControlhand.c_str());
-        	// ECHO("Done Subscribe Channel: ");
+			client.subscribe("Rostek/iot");
+        	ECHOLN("Done Subscribe Channel: Rostek/iot");
 		}
 	}
 	if(!client.connected()){
         ECHO("failed, rc=");
         ECHO(client.state());
-        ECHOLN(" try again in 2 seconds");
+        ECHOLN(" try again in 5 seconds");
     }
 }
 
 
+void ButtonConfigClick(){
+	if(digitalRead(PIN_CONFIG) == HIGH){
+        wifi.time_click_button = millis();
+    }
+	if(digitalRead(PIN_CONFIG) == LOW && (wifi.time_click_button + TIME_OUT_TO_CONFIG_MODE) <= millis()){
+		// for (int i = 0; i <= EEPROM_MEMORY; i++){ 
+        //     EEPROM.write(i, 0); 
+        // }
+		// EEPROM.commit();
+		// ECHOLN("Reset EEPROM!");
+		// delay(2000);
+		wifi.normal_mode = false;
+		SetupConfigMode();
+		StartWebServer();
+	}
+}
+
 
 void setup() {
 	// put your setup code here, to run once:
-	WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
+	#ifdef ESP32
+		WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
+	#endif
 	Serial.begin(BAUDRATE_DEFAULT);
 	EEPROM.begin(EEPROM_MEMORY);
 	delay(10);
 	pinMode(PIN_CONFIG, INPUT);
+
+	config_network.setup_wifi = false;
+	config_network.setup_mqtt = false;
 	
 	if(EEPROM.read(EEPROM_IS_REGISTER_WIFI) != 1){
 		wifi.normal_mode = false;
+		ReadEeprom();
 		SetupConfigMode();
 		StartWebServer();
 	}
@@ -270,5 +337,23 @@ void loop() {
 		}
 	}
 
-	server.handleClient();
+	ButtonConfigClick();
+
+	//mode setup
+	if(config_network.setup_wifi){
+		ECHOLN("Setup Wifi");
+		wifi.normal_mode = true;
+		config_network.setup_wifi = false;
+		ReadEeprom();
+		if(ConnectToWifi()){
+			StartWebServer();
+			ConnectToMqttServer();
+		}
+	}
+	if(config_network.setup_mqtt){
+		ECHOLN("Setup Mqtt");
+		config_network.setup_mqtt = false;
+		ReadEeprom();
+		ConnectToMqttServer();
+	}
 }
